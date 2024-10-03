@@ -1,9 +1,11 @@
 package org.example.expert.domain.todo.service;
 
+import aj.org.objectweb.asm.commons.Remapper;
 import lombok.RequiredArgsConstructor;
 import org.example.expert.client.WeatherClient;
 import org.example.expert.domain.common.dto.AuthUser;
 import org.example.expert.domain.common.exception.InvalidRequestException;
+import org.example.expert.domain.todo.dto.request.TodoGetRequest;
 import org.example.expert.domain.todo.dto.request.TodoSaveRequest;
 import org.example.expert.domain.todo.dto.response.TodoResponse;
 import org.example.expert.domain.todo.dto.response.TodoSaveResponse;
@@ -16,6 +18,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import javax.swing.*;
+import java.time.LocalDate;
 
 @Service
 @RequiredArgsConstructor
@@ -48,10 +53,10 @@ public class TodoService {
         );
     }
 
-    public Page<TodoResponse> getTodos(int page, int size) {
+    public Page<TodoResponse> getTodos(int page, int size, TodoGetRequest request) {
         Pageable pageable = PageRequest.of(page - 1, size);
 
-        Page<Todo> todos = todoRepository.findAllByOrderByModifiedAtDesc(pageable);
+        Page<Todo> todos = searchTodo(request,pageable);
 
         return todos.map(todo -> new TodoResponse(
                 todo.getId(),
@@ -80,4 +85,20 @@ public class TodoService {
                 todo.getModifiedAt()
         );
     }
+    private Page<Todo> searchTodo(TodoGetRequest request,Pageable pageable){
+
+        LocalDate startDate = LocalDate.parse(request.getStartDate());
+        LocalDate endDate = LocalDate.parse(request.getEndDate());
+
+        Page<Todo> todos;
+        if (!request.getWeather().isBlank() && request.getStartDate().isBlank() && request.getEndDate().isBlank()){
+            return todos = todoRepository.findByWeatherAndStartDateBetweenEndDate(request.getWeather(), startDate, endDate, pageable);
+        }
+        if (!request.getWeather().isBlank()){
+            return todos = todoRepository.findByAllWeather(request.getWeather(), pageable);
+        }
+            return todos = todoRepository.findAllByOrderByModifiedAtDesc(pageable);
+    }
+
+
 }
